@@ -1,7 +1,6 @@
 from datetime import date
-from Stock import Stock
-from Util import getStockPrice, prettyPrint
 from Portfolio import Portfolio
+from Util import *
 
 
 print('\n\n############################################################################################')
@@ -15,10 +14,12 @@ print('\n\n#####################################################################
 
 account = Portfolio(1000000)
 account.buy('AAPL', 20, date(2016, 12, 6))
-account.sell('AAPL', 20, date(2017, 3, 31))
-# account.buy('GOOG', 10, date(2017, 1, 9))
-# account.buy('GOOG', 25, date(2017, 1, 21))
-# account.buy('GOOG', 17, date(2017, 4, 5))
+account.sell('AAPL', 14, date(2017, 3, 31))
+account.buy('GOOG', 10, date(2017, 1, 9))
+account.buy('GOOG', 25, date(2017, 1, 21))
+account.buy('GOOG', 17, date(2017, 4, 5))
 print(account)
+
+# print(getStockClose('AAPL', date(2017, 3, 14)))
 
 print('############################################################################################')

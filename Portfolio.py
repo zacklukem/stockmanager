@@ -14,7 +14,6 @@ class Portfolio:
     def __str__(self):
         string = '---------------------------------------------\nTicker\tAmount\tTotal value\tTotal profit\n'
         for s in self.stocks:
-            # print(s.buyDates)
             for bd in s.buyDates:
                 string = string + '{}\t{}\t{}\t\t{}\n'.format(
                     s.ticker,
@@ -32,8 +31,8 @@ class Portfolio:
     Buys an amount of any stock. Will throw error if not enough cash.
     
     Args:
-        ticker (string): Ticker of the stock to buy
-        amount (integer): Number of stock to buy
+        ticker (str): Ticker of the stock to buy
+        amount (int): Number of stock to buy
         date (date): Date on which to buy the stock
     
     Raises:
@@ -66,8 +65,8 @@ class Portfolio:
     Stock class
     
     Args:
-        ticker (string): Ticker of the stock to buy
-        amount (integer): Number of stock to buy. Must be more than you have.
+        ticker (str): Ticker of the stock to buy
+        amount (int): Number of stock to buy. Must be more than you have.
         date (date): Optional. Date on which to buy the stock. Must be after stock was bought.
     """
     def sell(self, ticker, amount, date=getLastTradeDay()):
@@ -78,5 +77,33 @@ class Portfolio:
             if s.ticker == ticker:
                 cashAndProfit = s.sell(amount, date)
                 self.cash = self.cash + cashAndProfit[0]
-                print(cashAndProfit[1])
     
+    
+    
+    """
+    Export porfolio data for later use.
+    
+    Pickle portfolio data to be used later. Saves current cash and stocks.
+    
+    Args:
+        file (str): File to save data to (overwrites file)
+    """
+    def save(self, file):
+        f = open(file, 'wb')
+        pickle.dump([self.stocks, self.cash], f)
+        f.close()
+    
+    
+    
+    """
+    Loads porfolio data from save file
+    
+    Loads porfolio data from save file. Loads current cash and stocks.
+    
+    Args:
+        file (str): File to load data from
+    """
+    def load(self, file):
+        f = open(file, 'rb')
+        self.stocks, self.cash = pickle.load(f)
+        f.close()

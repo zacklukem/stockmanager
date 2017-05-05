@@ -41,7 +41,7 @@ class Stock:
     Gets the value of number of stocks on a date
     
     Args:
-        count (integer): Optional. number of stock
+        count (int): Optional. number of stock
         date (date): Optional
     
     Returns:
@@ -62,7 +62,7 @@ class Stock:
     date.
     
     Args:
-        count (integer): number of stock
+        count (int): number of stock
         date (date): Optional
     
     Returns:
@@ -85,7 +85,7 @@ class Stock:
     Buys number of stocks on a certain date.
     
     Args:
-        count (integer): Number of stocks to buy
+        count (int): Number of stocks to buy
         date (date): Date to buy the stocks on (optional)
     
     Returns:
@@ -106,7 +106,7 @@ class Stock:
     then selling newer and newer stocks (although order should not matter)
     
     Args:
-        count (integer): Number of stocks to sell
+        count (int): Number of stocks to sell
         date (date): Date to sell the stocks on (optional). Must be after stocks
         were bought, otherwise throw error. If not enough stocks to sell, it
         sells all of them.
