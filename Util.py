@@ -2,9 +2,7 @@ import urllib.parse
 import urllib.request
 import pickle
 from bisect import bisect_left
-from pprint import pprint
-from datetime import date
-from datetime import datetime, timedelta
+import datetime
 import dateutil.parser
 
 
@@ -23,27 +21,27 @@ Returns:
     datetime: The last trade day
 
 """
-# get last trade day going back from date
-def getLastTradeDay(da=None):
+# get last trade datey going back from date
+def getLastTradeDay(date=None):
     # if before 4pm, use yesterdays, otherwise use today
-    if da is None:
-        if datetime.now().hour < 16:
-            da = datetime.now()-timedelta(days=1)
+    if date is None:
+        if datetime.datetime.now().hour < 16:
+            date = datetime.datetime.now()-datetime.timedelta(days=1)
         else:
-            da = datetime.now()
+            date = datetime.datetime.now()
     
     # convert to date
-    if isinstance(da, datetime):
-        da = da.date()
+    if isinstance(date, datetime.datetime):
+        date = date.date()
     
     # 0 is monday 4 is friday (weekday)
-    if da.weekday() < 5:
-        return da
+    if date.weekday() < 5:
+        return date
     # weekend
     else:
-        curDate = da
+        curDate = date
         while curDate.weekday() > 4:
-            curDate = curDate - timedelta(days=1)
+            curDate = curDate - datetime.timedelta(days=1)
         return curDate
 
 
@@ -57,7 +55,7 @@ volume, and adjusted close from local database.
 Args:
     ticker (str): Ticker of the stock
     begin (date): Beginning of the date range for the stock price
-    end (`date`): End of the date range for the stock price. End >= begin
+    end (date): End of the date range for the stock price. End >= begin
 
 Returns:
     float[][]: 2d array of date, open, high, low, close, volume, and adj close.
@@ -84,7 +82,7 @@ def getStockPrice(ticker, begin, end):
         # find index with bisect_left
         i = bisect_left(dates, begin)
         if i != len(dates) and dates[i] == begin:
-            return data[::-1][i]
+            return data[len(dates)-i-1]
     else:
         # start and end index to slice list
         startIndex = 0
@@ -102,8 +100,9 @@ def getStockPrice(ticker, begin, end):
             endIndex = i
         
         # reverse data and bisect and reverse again
-        data = data[::-1][startIndex:endIndex+1][::-1]
-    
+        data = data[len(data)-endIndex-1 : len(data)-startIndex][::-1]
+        # data = data[::-1][startIndex:endIndex+1][::-1]
+        
     return data
 
 
@@ -122,7 +121,7 @@ Args:
 Returns:
     float: Closing ticker price
     -or-
-    float[]: Closing ticker prices
+    [date[], float[]]: Closing ticker prices
 """
 def getStockClose(ticker, begin, end=None):
     if end is None:
@@ -130,7 +129,7 @@ def getStockClose(ticker, begin, end=None):
         return prices[4] # directly returns values if only one date
     else:
         prices = getStockPrice(ticker, begin, end)
-        return [p[4] for p in prices]
+        return [[p[0], p[4]] for p in prices]
 
 
 
@@ -212,8 +211,76 @@ def downloadStockData(ticker, begin=None, end=None):
     # turn the first element into a date
     processed = [[dateutil.parser.parse(r[0]).date()] + r[1:] for r in processed]
     # round numbers for consistency
-    processed = [[round(float(item), 2) if not isinstance(item, date) else item for item in r] for r in processed]
+    processed = [[round(float(item), 2) if not isinstance(item, datetime.date) else item for item in r] for r in processed]
     
     f = open('stock_data/' + ticker, 'wb')
     pickle.dump(processed, f)
     f.close()
+
+
+
+"""
+Generates training data for the neural network.
+
+Generates training data by calculating when to buy and sell based on past 90 day
+stock data.
+Calculate buy/sell stock by calculating slope of line centered around a day
+The line would have length SLOPE_SIZE
+Training data: 0 is buy, 1 is sell
+
+Args:
+    ticker (str): Ticker of the stock to train
+    begin (date): Starting date of training data.
+    end (date): Ending date of training data.
+
+Raises:
+    ValueError: Throws error if date range is not multiple of 90 days
+"""
+def createTrainingData(ticker, begin, end):
+    begin = getLastTradeDay(begin)
+    end = getLastTradeDay(end)
+    
+    # number of days for slope calculations (has to be odd)
+    SLOPE_SIZE = 11
+    # half slope size, ceilinged
+    HALF_SS = 5
+    
+    # actual training data to return
+    data = []
+    
+    # maximum and minimum slope to normalize to 0-1
+    minimum = 1000000
+    maximum = -1000000
+
+    # [0] is date, [1] is close price
+    closes = getStockClose(ticker, begin, end)
+
+    # TODO: dont have slope centered on day, but have it ahead of day for future
+    # vision (since we are training optimal strategy, why not use the future?)
+    for j, price in enumerate(closes):
+        # calculate slopes
+        if j > SLOPE_SIZE-1 and j < len(price)-SLOPE_SIZE:
+            # rise / run or y2-y1 / x2-x1
+            # rise is closing values of date minus half of SLOPE_SIZE (so slope
+            # is centered on day with each side going out to HALF_SS)
+            slope = (closes[j-HALF_SS][1] - closes[j+HALF_SS][1]) / SLOPE_SIZE
+        elif j < SLOPE_SIZE:
+            # left side of slope on day b/c not enough data on left side
+            slope = (closes[j][1] - closes[j+HALF_SS][1]) / (HALF_SS+1)
+        elif j > len(price)-SLOPE_SIZE-1:
+            # right side of slope on day b/c not enough data on right side
+            slope = (closes[j-HALF_SS][1] - closes[j][1]) / (HALF_SS+1)
+        
+        if slope < minimum:
+            minimum = slope
+        elif slope > maximum:
+            maximum = slope
+        
+        data.append(slope)
+    
+    finalData = []
+    # normalize to number between 0 and 1
+    for d in data:
+        finalData.append((d-minimum) / (maximum-minimum))
+    print(minimum, maximum)
+    return finalData
