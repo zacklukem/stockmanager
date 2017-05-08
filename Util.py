@@ -50,7 +50,8 @@ def getLastTradeDay(date=None):
 Gets the price of a stock.
 
 Gets prices of ticker from begin to end with date, open, high, low, close,
-volume, and adjusted close from local database.
+volume, and adjusted close from local database. If part of requested date range
+has not been downloaded, will return the part that has been downloaded
 
 Args:
     ticker (str): Ticker of the stock
@@ -63,13 +64,14 @@ Returns:
 
 Raises:
     IOError: Raised if ticker not yet downloaded.
+    ValueError: Raised if date requested has not been downloaded
 """
 def getStockPrice(ticker, begin, end):
     begin = getLastTradeDay(begin)
     end = getLastTradeDay(end)
     
     # loads pickled data
-    f = open('stock_data/' + ticker, 'rb')
+    f = open('stockmanager/stock_data/' + ticker, 'rb')
     data = pickle.load(f)
     f.close()
     
@@ -81,8 +83,14 @@ def getStockPrice(ticker, begin, end):
         
         # find index with bisect_left
         i = bisect_left(dates, begin)
+        if len(dates)-i-1 < 0:
+            raise ValueError('Date range has not been downloaded!')
         if i != len(dates) and dates[i] == begin:
+            # return full data with index
             return data[len(dates)-i-1]
+        else:
+            # also raise error if cannot find correct date
+            raise ValueError('Date range has not been downloaded!')
     else:
         # start and end index to slice list
         startIndex = 0
@@ -99,10 +107,13 @@ def getStockPrice(ticker, begin, end):
         if i != len(dates) and dates[i] == end:
             endIndex = i
         
+        print(startIndex, endIndex)
+        
         # reverse data and bisect and reverse again
         data = data[len(data)-endIndex-1 : len(data)-startIndex][::-1]
         # data = data[::-1][startIndex:endIndex+1][::-1]
-        
+    
+    print('arstars')
     return data
 
 
@@ -121,7 +132,7 @@ Args:
 Returns:
     float: Closing ticker price
     -or-
-    [date[], float[]]: Closing ticker prices
+    float[]: Closing ticker prices
 """
 def getStockClose(ticker, begin, end=None):
     if end is None:
@@ -129,7 +140,7 @@ def getStockClose(ticker, begin, end=None):
         return prices[4] # directly returns values if only one date
     else:
         prices = getStockPrice(ticker, begin, end)
-        return [[p[0], p[4]] for p in prices]
+        return [p[4] for p in prices]
 
 
 
@@ -226,50 +237,44 @@ Generates training data by calculating when to buy and sell based on past 90 day
 stock data.
 Calculate buy/sell stock by calculating slope of line centered around a day
 The line would have length SLOPE_SIZE
-Training data: 0 is buy, 1 is sell
+Training data: 1 is buy, 0 is sell
 
 Args:
     ticker (str): Ticker of the stock to train
     begin (date): Starting date of training data.
     end (date): Ending date of training data.
+    SLOPE_SIZE (number): Optional, defaults to 20 Size of the slope. Has to be > 0
+    SMA_DAY (number): Optional, defaults to 1= Number of days for SMA.
 
 Raises:
     ValueError: Throws error if date range is not multiple of 90 days
 """
-def createTrainingData(ticker, begin, end):
+def createTrainingData(ticker, begin, end, SLOPE_SIZE=20, SMA_DAY=10):
     begin = getLastTradeDay(begin)
     end = getLastTradeDay(end)
     
-    # number of days for slope calculations (has to be odd)
-    SLOPE_SIZE = 11
-    # half slope size, ceilinged
-    HALF_SS = 5
     
     # actual training data to return
     data = []
-    
     # maximum and minimum slope to normalize to 0-1
     minimum = 1000000
     maximum = -1000000
-
+    
     # [0] is date, [1] is close price
     closes = getStockClose(ticker, begin, end)
+    # number of days for sma
+    closes = calculateSMA(closes, SMA_DAY)
+    
 
-    # TODO: dont have slope centered on day, but have it ahead of day for future
     # vision (since we are training optimal strategy, why not use the future?)
-    for j, price in enumerate(closes):
-        # calculate slopes
-        if j > SLOPE_SIZE-1 and j < len(price)-SLOPE_SIZE:
+    for i in range(len(closes)):
+        # if enough room for slope to go SLOPE_SIZE in the left
+        if i <= len(closes)-SLOPE_SIZE:
             # rise / run or y2-y1 / x2-x1
-            # rise is closing values of date minus half of SLOPE_SIZE (so slope
-            # is centered on day with each side going out to HALF_SS)
-            slope = (closes[j-HALF_SS][1] - closes[j+HALF_SS][1]) / SLOPE_SIZE
-        elif j < SLOPE_SIZE:
-            # left side of slope on day b/c not enough data on left side
-            slope = (closes[j][1] - closes[j+HALF_SS][1]) / (HALF_SS+1)
-        elif j > len(price)-SLOPE_SIZE-1:
-            # right side of slope on day b/c not enough data on right side
-            slope = (closes[j-HALF_SS][1] - closes[j][1]) / (HALF_SS+1)
+            # upper side of slope is date plus SLOPE_SIZE, the smaller side is
+            # just date
+            slope = (closes[i+SLOPE_SIZE-1] - closes[i]) / SLOPE_SIZE
+        # not enough room, just ignore it
         
         if slope < minimum:
             minimum = slope
@@ -278,9 +283,36 @@ def createTrainingData(ticker, begin, end):
         
         data.append(slope)
     
+    
     finalData = []
     # normalize to number between 0 and 1
     for d in data:
         finalData.append((d-minimum) / (maximum-minimum))
-    print(minimum, maximum)
+    
     return finalData
+
+
+
+"""
+Calculates the simple moving average
+
+Calculates the simple moving average of the *future* for **time** days.
+
+Args:
+    data (float[]): Stock prices to calculate sma. Closing prices preferred
+    time (number): How many days to be considered in the SMA.
+
+Returns:
+    float[]: SMA of the stocks
+"""
+def calculateSMA(data, time):
+    sma = []
+    for i in range(len(data)):
+        if i < time:
+            sma.append(sum([data[j] for j in range(time)]) / time)
+        # enough "future" to calculate sma
+        elif i < len(data) - time:
+            sma.append(sum([data[j] for j in range(i - time, i + time)]) / (time * 2))
+        # not enough, so ignore it and just return array w/o last part
+    
+    return sma

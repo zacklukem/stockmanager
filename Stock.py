@@ -1,4 +1,4 @@
-from Util import *
+from stockmanager.util import *
 
 
 
@@ -47,7 +47,7 @@ class Stock:
     Returns:
         float: Value of all stock
     """
-    def getValue(self, count=None, date=getLastTradeDay()):
+    def getValue(self, count=None, date=getLastTradeDay(datetime.date(2016, 12, 30))):
         if count is None:
             count = self.amount
         date = getLastTradeDay(date)
@@ -68,7 +68,7 @@ class Stock:
     Returns:
         float: Value of all stock. May be negative
     """
-    def getProfit(self, count=None, date=getLastTradeDay()):
+    def getProfit(self, count=None, date=getLastTradeDay(datetime.date(2016, 12, 30))):
         if count is None:
             count = self.amount
         date = getLastTradeDay(date)

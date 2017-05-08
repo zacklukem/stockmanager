@@ -1,5 +1,5 @@
-from Util import *
-from Stock import Stock
+from stockmanager.util import *
+from stockmanager.stock import Stock
 
 
 
@@ -33,7 +33,7 @@ class Portfolio:
     Args:
         ticker (str): Ticker of the stock to buy
         amount (int): Number of stock to buy
-        date (date): Date on which to buy the stock
+        date (datetime.date): Date on which to buy the stock
     
     Raises:
         ValueError: Throws error if insufficient cash
@@ -67,7 +67,7 @@ class Portfolio:
     Args:
         ticker (str): Ticker of the stock to buy
         amount (int): Number of stock to buy. Must be more than you have.
-        date (date): Optional. Date on which to buy the stock. Must be after stock was bought.
+        date (datetime.date): Optional. Date on which to buy the stock. Must be after stock was bought.
     """
     def sell(self, ticker, amount, date=getLastTradeDay()):
         date = getLastTradeDay(date)
