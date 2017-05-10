@@ -107,13 +107,10 @@ def getStockPrice(ticker, begin, end):
         if i != len(dates) and dates[i] == end:
             endIndex = i
         
-        print(startIndex, endIndex)
-        
         # reverse data and bisect and reverse again
         data = data[len(data)-endIndex-1 : len(data)-startIndex][::-1]
         # data = data[::-1][startIndex:endIndex+1][::-1]
     
-    print('arstars')
     return data
 
 
@@ -224,7 +221,8 @@ def downloadStockData(ticker, begin=None, end=None):
     # round numbers for consistency
     processed = [[round(float(item), 2) if not isinstance(item, datetime.date) else item for item in r] for r in processed]
     
-    f = open('stock_data/' + ticker, 'wb')
+    f = open('stockmanager/stock_data/' + ticker, 'wb')
+    print(len(processed))
     pickle.dump(processed, f)
     f.close()
 
@@ -243,8 +241,8 @@ Args:
     ticker (str): Ticker of the stock to train
     begin (date): Starting date of training data.
     end (date): Ending date of training data.
-    SLOPE_SIZE (number): Optional, defaults to 20 Size of the slope. Has to be > 0
-    SMA_DAY (number): Optional, defaults to 1= Number of days for SMA.
+    SLOPE_SIZE (number): Optional, defaults to 20. Size of the slope. Has to be > 0
+    SMA_DAY (number): Optional, defaults to 1. Number of days for SMA.
 
 Raises:
     ValueError: Throws error if date range is not multiple of 90 days
@@ -308,11 +306,27 @@ Returns:
 def calculateSMA(data, time):
     sma = []
     for i in range(len(data)):
-        if i < time:
-            sma.append(sum([data[j] for j in range(time)]) / time)
+        # if i < time:
+        #     sma.append(sum([data[j] for j in range(time)]) / time)
         # enough "future" to calculate sma
-        elif i < len(data) - time:
-            sma.append(sum([data[j] for j in range(i - time, i + time)]) / (time * 2))
+        if i < len(data) - time:
+            sma.append(sum([data[j] for j in range(i, i + time)]) / (time))
         # not enough, so ignore it and just return array w/o last part
     
     return sma
+
+
+
+"""
+Save training (and testing) data to a file.
+
+Saves training data, which includes the inputs (from getStockPrice) and outputs
+(from createTrainingData).
+
+Args:
+    ticker (str): Ticker of the stock to train
+    begin (date): Starting date of training data.
+    end (date): Ending date of training data.
+"""
+def saveTrainingData():
+    pass
