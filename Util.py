@@ -231,9 +231,9 @@ def downloadStockData(ticker, begin=None, end=None):
 """
 Generates training data for the neural network.
 
-Generates training data by calculating when to buy and sell based on past 90 day
-stock data.
-Calculate buy/sell stock by calculating slope of line centered around a day
+Generates training data by calculating when to buy and sell based on future
+SLOPE_SIZE day stock data.
+Calculate buy/sell stock by calculating slope of line with one end at a day.
 The line would have length SLOPE_SIZE
 Training data: 1 is buy, 0 is sell
 
@@ -247,7 +247,7 @@ Args:
 Raises:
     ValueError: Throws error if date range is not multiple of 90 days
 """
-def createTrainingData(ticker, begin, end, SLOPE_SIZE=20, SMA_DAY=10):
+def createTrainingData(ticker, begin, end, SLOPE_SIZE=20):
     begin = getLastTradeDay(begin)
     end = getLastTradeDay(end)
     
@@ -260,8 +260,8 @@ def createTrainingData(ticker, begin, end, SLOPE_SIZE=20, SMA_DAY=10):
     
     # [0] is date, [1] is close price
     closes = getStockClose(ticker, begin, end)
-    # number of days for sma
-    closes = calculateSMA(closes, SMA_DAY)
+    # smooth out data
+    # closes = calculateSMA(closes, SMA_DAY)
     
 
     # vision (since we are training optimal strategy, why not use the future?)
